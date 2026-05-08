@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <h1><span class="icon">💬</span> Real-time Chat</h1>
+            <div class="user-info">
+                <span id="current-room">Room: General</span>
+                <button id="leave-btn">Leave</button>
+            </div>
+        </header>
+
+        <div id="join-container" class="join-container">
+            <div class="join-form">
+                <h2>Join a Room</h2>
+                <input type="text" id="username-input" placeholder="Enter your username..." required />
+                <select id="room-select">
+                    <option value="General">General</option>
+                    <option value="Development">Development</option>
+                    <option value="Gaming">Gaming</option>
+                    <option value="Random">Random</option>
+                </select>
+                <button id="join-btn">Join Chat</button>
+            </div>
+        </div>
+
+        <main class="chat-main hidden" id="chat-main">
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will appear here -->
+            </div>
+        </main>
+
+        <div class="chat-form-container hidden" id="chat-form-container">
+            <form id="chat-form">
+                <input
+                    id="msg"
+                    type="text"
+                    placeholder="Type a message..."
+                    required
+                    autocomplete="off"
+                />
+                <button class="btn"><span class="icon">✈️</span> Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Socket.IO script -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
