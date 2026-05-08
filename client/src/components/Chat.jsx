@@ -4,7 +4,8 @@ import { io } from 'socket.io-client';
 import { LogOut, Plus, Users, Send } from 'lucide-react';
 import './Chat.css';
 
-const API_URL = 'http://localhost:5000/api';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = `${BACKEND_URL}/api`;
 
 const Chat = () => {
     const [rooms, setRooms] = useState([]);
@@ -16,6 +17,7 @@ const Chat = () => {
     const [roomUsers, setRoomUsers] = useState([]);
     const [socket, setSocket] = useState(null);
     const [userInfo, setUserInfo] = useState(null);
+    const [currentTheme, setCurrentTheme] = useState('theme-ocean');
     
     const messagesEndRef = useRef(null);
 
@@ -23,6 +25,11 @@ const Chat = () => {
         const storedUser = localStorage.getItem('userInfo');
         if (storedUser) {
             setUserInfo(JSON.parse(storedUser));
+        }
+        
+        const storedTheme = localStorage.getItem('chatTheme');
+        if (storedTheme) {
+            setCurrentTheme(storedTheme);
         }
         
         fetchRooms();
@@ -41,7 +48,7 @@ const Chat = () => {
 
     useEffect(() => {
         if (currentRoom && userInfo) {
-            const newSocket = io('http://localhost:5000');
+            const newSocket = io(BACKEND_URL);
             setSocket(newSocket);
 
             newSocket.emit('join_room', { 
@@ -117,8 +124,13 @@ const Chat = () => {
         window.location.href = '/login';
     };
 
+    const changeTheme = (theme) => {
+        setCurrentTheme(theme);
+        localStorage.setItem('chatTheme', theme);
+    };
+
     return (
-        <div className="chat-dashboard">
+        <div className={`chat-dashboard ${currentTheme}`}>
             <div className="sidebar">
                 <div className="sidebar-header">
                     <h2>Chat Rooms</h2>
@@ -127,6 +139,29 @@ const Chat = () => {
                     </button>
                 </div>
                 
+                <div className="theme-controls">
+                    <button 
+                        className={`theme-btn theme-ocean-btn ${currentTheme === 'theme-ocean' ? 'active' : ''}`} 
+                        onClick={() => changeTheme('theme-ocean')}
+                        title="Ocean Theme"
+                    />
+                    <button 
+                        className={`theme-btn theme-sunset-btn ${currentTheme === 'theme-sunset' ? 'active' : ''}`} 
+                        onClick={() => changeTheme('theme-sunset')}
+                        title="Sunset Theme"
+                    />
+                    <button 
+                        className={`theme-btn theme-neon-btn ${currentTheme === 'theme-neon' ? 'active' : ''}`} 
+                        onClick={() => changeTheme('theme-neon')}
+                        title="Neon Theme"
+                    />
+                    <button 
+                        className={`theme-btn theme-aurora-btn ${currentTheme === 'theme-aurora' ? 'active' : ''}`} 
+                        onClick={() => changeTheme('theme-aurora')}
+                        title="Aurora Theme"
+                    />
+                </div>
+
                 <div className="create-room-section">
                     <h3>Create Room</h3>
                     <form onSubmit={handleCreateRoom} className="create-room-form">
