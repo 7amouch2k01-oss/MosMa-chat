@@ -13,7 +13,15 @@ const messageSchema = new mongoose.Schema({
     room: {
         type: String,
         default: 'general',
-    }
+    },
+    reactions: {
+        type: Map,
+        of: [String],
+        default: {}
+    },
+    fileUrl: { type: String },
+    fileType: { type: String },
+    fileName: { type: String }
 }, { timestamps: true });
 
 const Message = mongoose.model('Message', messageSchema);

@@ -1,0 +1,53 @@
+.task-page-container {
+    min-height: 100vh;
+    background: var(--bg-main, #03000a);
+    display: flex;
+    flex-direction: column;
+}
+
+.task-page-nav {
+    padding: 20px 40px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.back-home-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.back-home-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-4px);
+}
+
+.task-page-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.task-page-content .task-overlay {
+    position: relative;
+    inset: auto;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+    width: 100%;
+}
+
+.task-page-content .task-panel {
+    animation: none;
+    height: 80vh;
+}

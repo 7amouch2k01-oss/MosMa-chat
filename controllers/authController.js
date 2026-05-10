@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const fs = require('fs');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
@@ -28,13 +29,16 @@ const registerUser = async (req, res) => {
                 _id: user._id,
                 username: user.username,
                 email: user.email,
+                isAdmin: user.isAdmin,
                 token: generateToken(user._id),
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        console.error("Register Error:", error);
+        fs.appendFileSync('error.log', `[${new Date().toISOString()}] Register Error: ${error.stack}\n`);
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 
@@ -45,17 +49,22 @@ const authUser = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && user.matchPassword(password)) {
+            if (user.isBanned) {
+                return res.status(403).json({ message: 'Your account has been banned. Please contact the administrator.' });
+            }
             res.json({
                 _id: user._id,
                 username: user.username,
                 email: user.email,
+                isAdmin: user.isAdmin,
                 token: generateToken(user._id),
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        console.error("Login Error:", error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 

@@ -1,0 +1,88 @@
+.friend-requests-container {
+    margin-top: 15px;
+    padding: 0 4px;
+}
+
+.requests-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.request-card {
+    background: var(--bg-glass-2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.request-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.request-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--bg-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+.request-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.request-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.req-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #fff;
+}
+
+.req-btn.accept {
+    background: #22c55e;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.req-btn.accept:hover {
+    background: #16a34a;
+    transform: scale(1.1);
+}
+
+.req-btn.decline {
+    background: #ef4444;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.req-btn.decline:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
