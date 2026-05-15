@@ -1,5 +1,6 @@
 /* --- Social Feed Styles --- */
 .social-dashboard {
+  width: 100%;
   min-height: 100vh;
   background: var(--mesh-bg);
   background-size: 200% 200%;
@@ -244,7 +245,64 @@
 .footer-copyright { text-align: center; opacity: 0.4; font-size: 0.75rem; margin-top: 20px; line-height: 1.6; }
 
 @media (max-width: 1024px) {
-  .social-content { grid-template-columns: 1fr; }
+  .social-content { 
+    grid-template-columns: 1fr; 
+    padding: 20px;
+  }
   .social-sidebar { display: none; }
   .social-nav { padding: 14px 20px; }
+}
+
+@media (max-width: 768px) {
+  .nav-center { display: none; } /* Hide nav text links on mobile */
+  .social-logo { font-size: 1.5rem; }
+  .nav-left h1 { font-size: 1.1rem; }
+  .chat-nav-btn span { display: none; } /* Show only icon for chat btn on tiny screens */
+  .chat-nav-btn { padding: 8px 12px; }
+  
+  .create-post-card, .post-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  
+  .post-text {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .social-content {
+    padding: 8px;
+    gap: 12px;
+  }
+  .create-post-card, .post-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .create-post-header textarea {
+    font-size: 0.95rem;
+  }
+  .user-profile-btn span {
+    display: none;
+  }
+  .user-profile-btn {
+    padding: 4px;
+  }
+  .social-logo { font-size: 1.3rem; }
+  .nav-left h1 { display: none; } /* Show only logo on very small screens */
+  .social-nav { padding: 10px 12px; }
+  .nav-right { gap: 10px; }
+}
+
+.feed-boot-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+@keyframes feedBootSpin {
+  to { transform: rotate(360deg); }
+}
+.feed-boot-loader-icon {
+  animation: feedBootSpin 0.85s linear infinite;
 }

@@ -211,3 +211,35 @@
     font-style: italic;
     text-align: center;
 }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 600px) {
+    .profile-panel {
+        width: 100%;
+        border-left: none;
+    }
+
+    .profile-body {
+        padding: 24px 16px;
+    }
+
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+
+    .profile-username {
+        font-size: 1.2rem;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-value {
+        font-size: 1.1rem;
+    }
+}

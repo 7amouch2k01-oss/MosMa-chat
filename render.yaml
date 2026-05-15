@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: mosma-chat
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        fromValue: ${MONGO_URI}
+      - key: JWT_SECRET
+        fromValue: ${JWT_SECRET}
+      - key: PORT
+        value: 10000

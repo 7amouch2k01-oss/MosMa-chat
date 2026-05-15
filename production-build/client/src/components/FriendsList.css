@@ -1,0 +1,104 @@
+.friends-list-container {
+    margin-top: 20px;
+    padding: 0 4px;
+}
+
+.friends-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 10px;
+    text-align: center;
+    background: var(--bg-glass);
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.friends-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.friend-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg-glass);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.friend-item:hover {
+    background: var(--bg-glass-2);
+    border-color: var(--glass-border);
+    transform: translateX(4px);
+}
+
+.friend-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid var(--bg-main);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.friend-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.friend-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.friend-status {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.dm-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+}
+
+.friend-item:hover .dm-icon-btn {
+    opacity: 1;
+    color: var(--accent);
+    background: rgba(123, 47, 247, 0.1);
+}

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle } from 'lucide-react';
+import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle, Edit3, Trash2, Menu, RefreshCw } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
-import { ToastContainer, useToast } from './Toast';
+import { useToast } from './Toast';
 import FriendsList from './FriendsList';
 import UserSearch from './UserSearch';
 import MembersPanel from './MembersPanel';
@@ -16,8 +16,19 @@ import AdminDashboard from './AdminDashboard';
 import TaskManager from './TaskManager';
 import './Chat.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
 const API_URL = `${BACKEND_URL}/api`;
+
+function readStoredUserInfo() {
+    try {
+        const raw = localStorage.getItem('userInfo');
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        localStorage.removeItem('userInfo');
+        return null;
+    }
+}
 
 // Highlight text that matches the search query
 const HighlightText = ({ text, query }) => {
@@ -70,8 +81,8 @@ const Chat = () => {
     const [newMessage, setNewMessage]     = useState('');
     const [roomUsers, setRoomUsers]       = useState([]);
     const [socket, setSocket]             = useState(null);
-    const [userInfo, setUserInfo]         = useState(null);
-    const [currentTheme, setCurrentTheme] = useState('theme-cosmic');
+    const [userInfo, setUserInfo]         = useState(readStoredUserInfo);
+    const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('chatTheme') || 'theme-snow');
 
     // Typing
     const [typingUsers, setTypingUsers] = useState([]);
@@ -102,6 +113,7 @@ const Chat = () => {
     });
     const [showAdmin, setShowAdmin] = useState(false);
     const [showTasks, setShowTasks] = useState(false);
+    const [mobileSidebar, setMobileSidebar] = useState(false);
 
     // Call state
     const [activeCall, setActiveCall]     = useState(null); // { targetUser, type }
@@ -110,6 +122,11 @@ const Chat = () => {
     // Message status
     const [msgStatuses, setMsgStatuses] = useState({});
     const [uploading, setUploading] = useState(false);
+    const [editingMsgId, setEditingMsgId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const [sidebarSearch, setSidebarSearch] = useState('');
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [errorBoundary, setErrorBoundary] = useState(null);
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -129,6 +146,19 @@ const Chat = () => {
         }, ...prev].slice(0, 50)); // Keep last 50
     }, [addToast, settings.notifications]);
 
+    const fetchRooms = useCallback(async () => {
+        try {
+            const token = readStoredUserInfo()?.token;
+            if (!token) return;
+            const { data } = await axios.get(`${API_URL}/rooms`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setRooms(data);
+        } catch (err) {
+            console.error('Error fetching rooms', err);
+        }
+    }, []);
+
     // Update global online users for sub-components
     useEffect(() => {
         window.__onlineUsers = onlineUserIds;
@@ -137,7 +167,15 @@ const Chat = () => {
     // ── Init ──────────────────────────────────────────────────────────────────
     useEffect(() => {
         const stored = localStorage.getItem('userInfo');
-        if (stored) setUserInfo(JSON.parse(stored));
+        if (stored) {
+            try {
+                setUserInfo(JSON.parse(stored));
+            } catch {
+                localStorage.removeItem('userInfo');
+                navigate('/login');
+                return;
+            }
+        }
         const storedTheme = localStorage.getItem('chatTheme');
         if (storedTheme) setCurrentTheme(storedTheme);
         fetchRooms();
@@ -150,31 +188,18 @@ const Chat = () => {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const fetchRooms = async () => {
-        try {
-            const token = JSON.parse(localStorage.getItem('userInfo'))?.token;
-            const { data } = await axios.get(`${API_URL}/rooms`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setRooms(data);
-        } catch (err) {
-            console.error('Error fetching rooms', err);
-        }
-    };
+    }, [fetchRooms, navigate]);
 
     // ── Socket Setup ──────────────────────────────────────────────────────────
     useEffect(() => {
         if (!userInfo) return;
 
-        const newSocket = io(BACKEND_URL);
+        const newSocket = io(BACKEND_URL, {
+            auth: { token: userInfo.token },
+        });
         setSocket(newSocket);
 
-        newSocket.emit('user_connected', {
-            userId:   userInfo._id,
-            username: userInfo.username,
-        });
+        newSocket.emit('user_connected');
 
         newSocket.on('online_users_list', (ids) => {
             setOnlineUserIds(new Set(ids));
@@ -260,8 +285,6 @@ const Chat = () => {
 
         socket.emit('join_room', {
             roomId:   currentRoom._id,
-            userId:   userInfo._id,
-            username: userInfo.username,
         });
 
         socket.on('previous_messages', (msgs) => setMessages(msgs));
@@ -292,11 +315,18 @@ const Chat = () => {
             setMessages(prev => prev.map(m => m._id === messageId ? { ...m, reactions } : m));
         });
 
+        // Delete/Edit
+        socket.on('message_deleted', ({ messageId }) => {
+            setMessages(prev => prev.filter(m => m._id !== messageId));
+        });
+
+        socket.on('message_edited', (updatedMsg) => {
+            setMessages(prev => prev.map(m => m._id === updatedMsg._id ? updatedMsg : m));
+        });
+
         return () => {
             socket.emit('leave_room', {
                 roomId:   currentRoom._id,
-                userId:   userInfo._id,
-                username: userInfo.username,
             });
             socket.off('previous_messages');
             socket.off('receive_message');
@@ -313,8 +343,11 @@ const Chat = () => {
 
     // Auto-scroll
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, typingUsers]);
+        const timer = setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [messages, currentRoom, typingUsers]);
 
     // Focus search
     useEffect(() => {
@@ -409,7 +442,10 @@ const Chat = () => {
 
         try {
             const { data } = await axios.post(`${API_URL}/upload`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${userInfo.token}`,
+                }
             });
 
             // Send file message
@@ -439,22 +475,47 @@ const Chat = () => {
         socket.emit('message_reaction', {
             messageId,
             emoji,
-            userId: userInfo._id,
             roomId: currentRoom._id
         });
     };
 
+    const handleDeleteMessage = (messageId) => {
+        if (!window.confirm('Delete this message?')) return;
+        if (socket && currentRoom) {
+            socket.emit('delete_message', { messageId, roomId: currentRoom._id });
+        }
+    };
+
+    const startEditing = (msg) => {
+        setEditingMsgId(msg._id);
+        setEditContent(msg.content);
+    };
+
+    const handleSaveEdit = (e) => {
+        e.preventDefault();
+        if (!editContent.trim() || !socket || !currentRoom) return;
+        socket.emit('edit_message', { 
+            messageId: editingMsgId, 
+            content: editContent, 
+            roomId: currentRoom._id 
+        });
+        setEditingMsgId(null);
+        setEditContent('');
+    };
+
     const handleCreateRoom = async (e) => {
         e.preventDefault();
+        if (!newRoomName.trim()) return;
         try {
             const token = userInfo?.token;
-            await axios.post(`${API_URL}/rooms`,
+            const { data } = await axios.post(`${API_URL}/rooms`,
                 { name: newRoomName, description: newRoomDesc },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setRooms(prev => [data, ...prev]);
+            setCurrentRoom(data);
             setNewRoomName('');
             setNewRoomDesc('');
-            fetchRooms();
             addToast(`Room "${newRoomName}" created!`, 'success');
         } catch (err) {
             addToast(err.response?.data?.message || 'Failed to create room', 'error');
@@ -468,11 +529,18 @@ const Chat = () => {
                 { userId: otherUser._id },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            // Set the "name" of the DM room for display purposes locally
-            data.name = otherUser.username; 
+            
+            // Check if room already in list
+            setRooms(prev => {
+                const exists = prev.some(r => r._id === data._id);
+                if (exists) return prev;
+                return [data, ...prev];
+            });
+
             setCurrentRoom(data);
             setShowUserSearch(false);
             setShowMembers(false);
+            setMobileSidebar(false);
         } catch (err) {
             addToast('Failed to start DM', 'error');
         }
@@ -504,8 +572,25 @@ const Chat = () => {
         window.dispatchEvent(new Event('themeChanged'));
     };
 
-    const filteredMessages = searchQuery.trim()
-        ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    const handleServerSearch = async () => {
+        if (!searchQuery.trim() || !currentRoom) return;
+        setSearchLoading(true);
+        try {
+            const token = userInfo?.token;
+            const { data } = await axios.get(`${API_URL}/rooms/${currentRoom._id}/search?q=${searchQuery}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMessages(data); // Replace current messages with search results
+            addToast(`Found ${data.length} messages in history`, 'info');
+        } catch (err) {
+            addToast('Search failed', 'error');
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const filteredMessages = searchQuery.trim() && !searchLoading
+        ? messages.filter(m => (m.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
         : messages;
 
     const typingText = typingUsers.length === 1
@@ -516,14 +601,35 @@ const Chat = () => {
                 ? 'Several people are typing'
                 : null;
 
+    if (errorBoundary) {
+        return (
+            <div style={{ padding: '2rem', background: '#000', color: '#ff4d4d', height: '100vh', overflow: 'auto' }}>
+                <h2>Something went wrong in Chat.jsx</h2>
+                <pre style={{ background: '#111', padding: '1rem', borderRadius: '8px', color: '#fff' }}>
+                    {errorBoundary.message}
+                    {'\n\n'}
+                    {errorBoundary.stack}
+                </pre>
+                <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '1rem' }}>Reload App</button>
+            </div>
+        );
+    }
+
+    if (!userInfo) {
+        return (
+            <div className="chat-dashboard loading-screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner" />
+            </div>
+        );
+    }
+
     if (showAdmin) {
         return <AdminDashboard userInfo={userInfo} onBack={() => setShowAdmin(false)} />;
     }
 
-    return (
-        <div className={`chat-dashboard ${currentTheme}`}>
-            <ToastContainer toasts={toasts} removeToast={removeToast} />
-
+    try {
+        return (
+            <div className={`chat-dashboard ${currentTheme}`}>
             {activeCall && (
                 <CallPanel 
                     socket={socket} 
@@ -594,11 +700,13 @@ const Chat = () => {
             {showTasks && <TaskManager userInfo={userInfo} onClose={() => setShowTasks(false)} />}
 
             {/* ── SIDEBAR ──────────────────────────────────────────────────── */}
-            <div className="sidebar">
+            <div className={`sidebar ${mobileSidebar ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
                     <div className="sidebar-brand">
-                        <div className="sidebar-logo">💬</div>
-                        <h2>NexChat</h2>
+                        <div className="sidebar-logo">
+                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '28px', height: '28px', objectFit: 'contain'}} />
+                        </div>
+                        <h2>MosMA Chat</h2>
                     </div>
                     <div className="sidebar-actions">
                         <button className="icon-btn" onClick={() => navigate('/')} title="Back to Home">
@@ -611,9 +719,13 @@ const Chat = () => {
                         <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
                             <Settings size={18} />
                         </button>
-                        <button className="icon-btn" onClick={() => handleViewProfile(userInfo)} title="My Profile">
-                            <User size={18} />
-                        </button>
+                        <div className="avatar-xs" style={{ background: userInfo.avatarColor || 'var(--accent)' }}>
+                            {userInfo.profilePic ? (
+                                <img src={`${BACKEND_URL}${userInfo.profilePic}`} alt="avatar" />
+                            ) : (
+                                userInfo.username[0].toUpperCase()
+                            )}
+                        </div>
                         <button className="icon-btn" onClick={() => navigate('/feed')} title="Social Feed">
                             <Home size={18} />
                         </button>
@@ -640,12 +752,26 @@ const Chat = () => {
                         )}
                     </div>
 
+                    <div className="sidebar-search-container">
+                        <div className="sidebar-search-box">
+                            <Search size={14} />
+                            <input 
+                                type="text" 
+                                placeholder="Search rooms or friends..." 
+                                value={sidebarSearch}
+                                onChange={(e) => setSidebarSearch(e.target.value)}
+                            />
+                            {sidebarSearch && <X size={14} onClick={() => setSidebarSearch('')} style={{cursor: 'pointer'}} />}
+                        </div>
+                    </div>
+
                     {/* Friends */}
                     <FriendsList 
                         userInfo={userInfo} 
                         onStartDM={handleStartDM} 
                         socket={socket} 
-                        onlineUserIds={onlineUserIds} 
+                        onlineUserIds={onlineUserIds}
+                        searchQuery={sidebarSearch}
                     />
 
                     {/* Create room */}
@@ -670,14 +796,17 @@ const Chat = () => {
                     <div className="rooms-list">
                         <p className="section-title"><Hash size={12} /> Rooms</p>
                         <ul>
-                            {rooms.filter(r => r.type !== 'dm').map(room => (
+                            {rooms
+                                .filter(r => r.type !== 'dm')
+                                .filter(r => (r.name || '').toLowerCase().includes(sidebarSearch.toLowerCase()))
+                                .map(room => (
                                 <li
                                     key={room._id}
                                     className={`room-item ${currentRoom?._id === room._id ? 'active' : ''}`}
-                                    onClick={() => setCurrentRoom(room)}
+                                    onClick={() => { setCurrentRoom(room); setMobileSidebar(false); }}
                                 >
                                     <div className="room-item-row">
-                                        <span className="room-name">{room.name}</span>
+                                        <span className="room-name"># {room.name}</span>
                                         <span className="room-users-count">
                                             <Users size={11} /> {room.users?.length || 0}
                                         </span>
@@ -691,18 +820,26 @@ const Chat = () => {
                     <div className="rooms-list">
                         <p className="section-title"><MessageSquare size={12} /> Direct Messages</p>
                         <ul>
-                            {rooms.filter(r => r.type === 'dm').map(room => {
+                            {rooms
+                                .filter(r => r.type === 'dm')
+                                .filter(r => {
+                                    const other = r.participants?.find(p => p._id !== userInfo?._id);
+                                    return (other?.username || 'Private Chat').toLowerCase().includes(sidebarSearch.toLowerCase());
+                                })
+                                .map(room => {
                                 const other = room.participants?.find(p => p._id !== userInfo?._id);
                                 const isOnline = other ? onlineUserIds.has(other._id) : false;
                                 return (
                                     <li 
                                         key={room._id} 
                                         className={`room-item ${currentRoom?._id === room._id ? 'active' : ''}`} 
-                                        onClick={() => setCurrentRoom(room)}
+                                        onClick={() => { setCurrentRoom(room); setMobileSidebar(false); }}
                                     >
                                         <div className="room-item-row">
-                                            <span className="room-name">{other?.username || 'Private Chat'}</span>
-                                            <span className={isOnline ? 'online-dot' : 'offline-dot'} />
+                                            <div className="room-dm-info">
+                                                <span className={isOnline ? 'online-dot' : 'offline-dot'} />
+                                                <span className="room-name">{other?.username || 'Private Chat'}</span>
+                                            </div>
                                         </div>
                                     </li>
                                 );
@@ -717,6 +854,9 @@ const Chat = () => {
                 {currentRoom ? (
                     <>
                         <div className="chat-header">
+                            <div className="sidebar-toggle" onClick={() => setMobileSidebar(!mobileSidebar)}>
+                                <Menu size={24} />
+                            </div>
                             <div className="room-title">
                                 <h2>{currentRoom.type === 'dm' ? '@' : '#'} {currentRoom.name}</h2>
                                 {currentRoom.description && <p>{currentRoom.description}</p>}
@@ -730,8 +870,17 @@ const Chat = () => {
                                         placeholder="Search messages..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
+                                        onKeyPress={e => e.key === 'Enter' && handleServerSearch()}
                                     />
-                                    {searchQuery && <span className="search-count">{filteredMessages.length} matches</span>}
+                                    <button 
+                                        className="server-search-btn" 
+                                        onClick={handleServerSearch}
+                                        disabled={searchLoading || !searchQuery.trim()}
+                                        title="Deep search in history"
+                                    >
+                                        {searchLoading ? <RefreshCw size={14} className="spin" /> : <Search size={14} />}
+                                    </button>
+                                    {searchQuery && !searchLoading && <span className="search-count">{filteredMessages.length} matches</span>}
                                 </div>
                                 <button
                                     className="icon-btn"
@@ -761,8 +910,13 @@ const Chat = () => {
                                 <div className="online-users" onClick={() => setShowMembers(true)}>
                                     {roomUsers.slice(0, 3).map(u => (
                                         <div key={u._id} className="user-pill">
-                                            <span className={onlineUserIds.has(u._id) ? 'online-dot' : 'offline-dot'} />
-                                            {u.username}
+                                            <div className="avatar-xs" style={{ background: u.avatarColor || 'var(--accent)' }}>
+                                                    {u.profilePic ? (
+                                                        <img src={`${BACKEND_URL}${u.profilePic}`} alt="avatar" />
+                                                    ) : (
+                                                        u.username?.charAt(0).toUpperCase() || '?'
+                                                    )}
+                                            </div>
                                         </div>
                                     ))}
                                     {roomUsers.length > 3 && (
@@ -783,9 +937,25 @@ const Chat = () => {
                                     >
                                         <div className="message-content">
                                             {!isOwn && <span className="sender">{msg.username}</span>}
-                                            <p>
-                                                <HighlightText text={msg.content} query={searchQuery} />
-                                            </p>
+                                            
+                                            {editingMsgId === msg._id ? (
+                                                <form className="edit-msg-form" onSubmit={handleSaveEdit}>
+                                                    <input 
+                                                        autoFocus
+                                                        value={editContent} 
+                                                        onChange={(e) => setEditContent(e.target.value)}
+                                                    />
+                                                    <div className="edit-actions">
+                                                        <button type="submit">Save</button>
+                                                        <button type="button" onClick={() => setEditingMsgId(null)}>Cancel</button>
+                                                    </div>
+                                                </form>
+                                            ) : (
+                                                <p>
+                                                    <HighlightText text={msg.content} query={searchQuery} />
+                                                    {msg.updatedAt && <small className="edited-tag">(edited)</small>}
+                                                </p>
+                                            )}
                                             
                                             {msg.fileUrl && (
                                                 <div className="message-attachment">
@@ -835,6 +1005,12 @@ const Chat = () => {
                                                         {emoji}
                                                     </button>
                                                 ))}
+                                                {(isOwn || userInfo.isAdmin) && (
+                                                    <div className="msg-admin-actions">
+                                                        <button title="Edit" onClick={() => startEditing(msg)}><Edit3 size={12} /></button>
+                                                        <button title="Delete" onClick={() => handleDeleteMessage(msg._id)}><Trash2 size={12} /></button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -892,8 +1068,10 @@ const Chat = () => {
                     </>
                 ) : (
                     <div className="no-room-selected">
-                        <div className="welcome-icon">💬</div>
-                        <h2>Welcome to NexChat</h2>
+                        <div className="welcome-icon">
+                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '80px', height: '80px', objectFit: 'contain'}} />
+                        </div>
+                        <h2>Welcome to MosMA Chat</h2>
                         <p>Select a room or friend to start chatting!</p>
                         <button className="create-btn" onClick={() => setShowUserSearch(true)}>
                             <Search size={14} /> Find People
@@ -903,6 +1081,10 @@ const Chat = () => {
             </div>
         </div>
     );
+    } catch (err) {
+        setErrorBoundary(err);
+        return null;
+    }
 };
 
 export default Chat;
