@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerUser, authUser, logoutUser } = require('../controllers/authController');
+const { registerUser, authUser, logoutUser, verifyEmail, resendVerification, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { body, validationResult } = require('express-validator');
 
@@ -37,6 +37,14 @@ router.post(
 );
 
 router.post('/logout', logoutUser);
+
+// Email Verification Routes
+router.post('/verify-email', protect, verifyEmail);
+router.post('/resend-verification', protect, resendVerification);
+
+// Password Reset Routes
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Example of a protected route
 router.get('/profile', protect, (req, res) => {

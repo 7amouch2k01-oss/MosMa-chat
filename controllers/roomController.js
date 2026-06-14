@@ -7,11 +7,32 @@ exports.createRoom = async (req, res) => {
         if (existingRoom) {
             return res.status(400).json({ message: 'Room already exists' });
         }
+
+        // Enforce room creation tier limits
+        const tier = req.user.subscriptionTier || 'free';
+        const roomCount = await Room.countDocuments({ creator: req.user._id, type: 'group' });
+
+        if (tier === 'free' && roomCount >= 3) {
+            return res.status(403).json({ 
+                message: 'Limit reached: Free tier is limited to 3 group chat rooms. Please upgrade to Pro or Elite to create more.',
+                limitReached: true,
+                tier: 'free'
+            });
+        }
+        if (tier === 'pro' && roomCount >= 10) {
+            return res.status(403).json({ 
+                message: 'Limit reached: Pro tier is limited to 10 group chat rooms. Please upgrade to Elite to create unlimited rooms.',
+                limitReached: true,
+                tier: 'pro'
+            });
+        }
+
         const room = await Room.create({ 
             name, 
             description, 
             type: 'group', 
-            users: [req.user._id] 
+            users: [req.user._id],
+            creator: req.user._id
         });
         res.status(201).json(room);
     } catch (error) {
@@ -26,7 +47,7 @@ exports.getRooms = async (req, res) => {
                 { users: req.user._id },
                 { participants: req.user._id }
             ]
-        }).populate('users', 'username email avatarColor').populate('participants', 'username email avatarColor status');
+        }).populate('users', 'username email avatarColor subscriptionTier').populate('participants', 'username email avatarColor status subscriptionTier');
         
         // Add name for DM rooms based on the other participant
         rooms = rooms.map(room => {
@@ -46,7 +67,7 @@ exports.getRooms = async (req, res) => {
 
 exports.getRoomById = async (req, res) => {
     try {
-        const room = await Room.findById(req.params.id).populate('users', 'username email avatarColor').populate('participants', 'username email avatarColor status');
+        const room = await Room.findById(req.params.id).populate('users', 'username email avatarColor subscriptionTier').populate('participants', 'username email avatarColor status subscriptionTier');
         if (!room) return res.status(404).json({ message: 'Room not found' });
         
         // Authorization check
@@ -78,7 +99,7 @@ exports.getOrCreateDMRoom = async (req, res) => {
         let room = await Room.findOne({
             type: 'dm',
             participants: { $all: [currentUserId, userId], $size: 2 }
-        }).populate('participants', 'username email avatarColor status');
+        }).populate('participants', 'username email avatarColor status subscriptionTier');
 
         if (!room) {
             // Create new DM room
@@ -86,7 +107,7 @@ exports.getOrCreateDMRoom = async (req, res) => {
                 type: 'dm',
                 participants: [currentUserId, userId]
             });
-            room = await room.populate('participants', 'username email avatarColor status');
+            room = await room.populate('participants', 'username email avatarColor status subscriptionTier');
         }
 
         const roomObj = room.toObject();

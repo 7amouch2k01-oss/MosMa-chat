@@ -3,6 +3,7 @@ import TaskManager from './TaskManager';
 import SettingsPanel from './SettingsPanel';
 import { useNavigate } from 'react-router-dom';
 import { Home, Settings, Loader2, MessageSquare, Globe } from 'lucide-react';
+import BillingModal from './BillingModal';
 import './TaskPage.css';
 
 const THEMES = {
@@ -43,8 +44,8 @@ const TaskPage = () => {
         const saved = localStorage.getItem('chatSettings');
         return saved ? JSON.parse(saved) : { notifications: true, animations: true };
     });
-
-    const userInfo = readStoredUserInfo();
+    const [userInfo, setUserInfo] = useState(() => readStoredUserInfo());
+    const [showBilling, setShowBilling] = useState(false);
 
     useEffect(() => {
         if (!userInfo) navigate('/login', { replace: true });
@@ -64,12 +65,14 @@ const TaskPage = () => {
         window.dispatchEvent(new Event('themeChanged'));
     };
 
+    const isFreeTier = !userInfo?.subscriptionTier || userInfo.subscriptionTier === 'free';
+
     return (
         <div className={`task-page-container ${currentTheme}`}>
             <nav className="task-page-nav">
                 <div className="nav-left">
                     <div className="task-logo" onClick={() => navigate('/')}>
-                        <img src="/mosma_logo.png" alt="Logo" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        <img src="/mosma_logo.png" alt="Logo" style={{width: '32px', height: '32px', objectFit: 'contain', borderRadius: '50%'}} />
                     </div>
                     <h1>Task Board</h1>
                 </div>
@@ -101,8 +104,41 @@ const TaskPage = () => {
             )}
 
             <div className="task-page-content">
-                <TaskManager userInfo={userInfo} onClose={() => navigate('/chat')} isFullPage={true} />
+                {isFreeTier ? (
+                    <div className="task-locked-container">
+                        <div className="lock-icon-container">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <h2>Unlock Task Board</h2>
+                        <p className="lock-subtitle">Collaborate on tasks, track progress, and organize your projects with interactive Kanban boards.</p>
+                        <div className="lock-benefits-box">
+                            <h3>Pro Features Included:</h3>
+                            <ul className="lock-benefits-list">
+                                <li><span className="lock-check">✓</span> Create, edit, and assign tasks</li>
+                                <li><span className="lock-check">✓</span> Interactive drag & drop Kanban board</li>
+                                <li><span className="lock-check">✓</span> Add descriptions, priority levels & tags</li>
+                                <li><span className="lock-check">✓</span> Collaborative real-time updates</li>
+                            </ul>
+                        </div>
+                        <button className="lock-upgrade-btn" onClick={() => setShowBilling(true)}>
+                            Upgrade to Pro ($4.99/mo)
+                        </button>
+                    </div>
+                ) : (
+                    <TaskManager userInfo={userInfo} onClose={() => navigate('/chat')} isFullPage={true} />
+                )}
             </div>
+
+            <BillingModal 
+                isOpen={showBilling} 
+                onClose={() => setShowBilling(false)} 
+                onSuccess={(updatedUser) => {
+                    setUserInfo(updatedUser);
+                    // Also dispatch an event so other tabs/components know userInfo changed
+                    window.dispatchEvent(new Event('storage'));
+                }}
+                initialTier="pro"
+            />
         </div>
     );
 };

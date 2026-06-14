@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Check, X, User } from 'lucide-react';
 import './FriendRequest.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 const FriendRequest = ({ userInfo, onToast, socket }) => {
@@ -30,7 +30,7 @@ const FriendRequest = ({ userInfo, onToast, socket }) => {
             const { data } = await axios.get(`${API_URL}/friends`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setRequests(data.filter(f => f.status === 'pending' && f.recipient._id === userInfo._id));
+            setRequests(data.filter(f => f.status === 'pending' && f.recipient && f.recipient._id === userInfo._id && f.requester));
         } catch (err) {
             console.error(err);
         }

@@ -8,9 +8,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MONGO_URI
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
       - key: PORT
         value: 10000
+      - key: MONGO_URI
+        sync: false          # You will paste your Atlas URI in the Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: CLIENT_URL
+        sync: false          # Set to your Render service URL once deployed, e.g. https://mosma-chat.onrender.com

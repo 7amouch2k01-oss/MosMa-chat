@@ -1,0 +1,277 @@
+/* ═══ Drive Panel Styles ═══════════════════════════════════════════════════ */
+
+/* Shared animation */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
+.drive-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    z-index: 9000;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    animation: driveIn 0.25s ease;
+}
+@keyframes driveIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.drive-panel {
+    width: min(420px, 100vw);
+    height: 100vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    border-left: 1px solid rgba(99, 102, 241, 0.2);
+    display: flex;
+    flex-direction: column;
+    animation: driveSlideIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+}
+@keyframes driveSlideIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+}
+
+/* ── Header ── */
+.drive-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(99,102,241,0.06);
+    flex-shrink: 0;
+}
+.drive-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.drive-header-top h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.drive-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.drive-close-btn:hover {
+    background: rgba(239,68,68,0.2);
+    color: #f87171;
+    border-color: rgba(239,68,68,0.4);
+}
+
+/* ── Storage bar ── */
+.drive-storage-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.drive-storage-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+.drive-storage-labels strong {
+    color: #94a3b8;
+}
+.drive-storage-track {
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 30px;
+    overflow: hidden;
+}
+.drive-storage-fill {
+    height: 100%;
+    border-radius: 30px;
+    transition: width 0.5s ease;
+}
+.drive-storage-fill.tier-free   { background: linear-gradient(90deg, #6366f1, #818cf8); }
+.drive-storage-fill.tier-pro    { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.drive-storage-fill.tier-elite  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.drive-storage-fill.near-full   { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+.drive-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+}
+.drive-tier-badge.free  { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; }
+.drive-tier-badge.pro   { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: #a78bfa; }
+.drive-tier-badge.elite { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+
+/* ── File list ── */
+.drive-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.drive-body::-webkit-scrollbar { width: 4px; }
+.drive-body::-webkit-scrollbar-track { background: transparent; }
+.drive-body::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 4px; }
+
+.drive-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 20px;
+    text-align: center;
+    color: #475569;
+}
+.drive-empty svg { opacity: 0.4; }
+.drive-empty p { font-size: 0.85rem; line-height: 1.5; }
+
+.drive-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    color: #475569;
+    gap: 10px;
+    font-size: 0.85rem;
+}
+
+.drive-file-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+.drive-file-card:hover {
+    background: rgba(99,102,241,0.08);
+    border-color: rgba(99,102,241,0.25);
+    transform: translateX(-2px);
+}
+.drive-file-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.2rem;
+}
+.drive-file-icon.type-image  { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+.drive-file-icon.type-pdf    { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.2);  }
+.drive-file-icon.type-other  { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+
+.drive-file-info {
+    flex: 1;
+    min-width: 0;
+}
+.drive-file-info h4 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 3px;
+}
+.drive-file-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.7rem;
+    color: #475569;
+}
+
+.drive-file-size {
+    font-size: 0.7rem;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+/* ── Filter tabs ── */
+.drive-filter-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.drive-filter-tab {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.drive-filter-tab.active, .drive-filter-tab:hover {
+    background: rgba(99,102,241,0.2);
+    border-color: rgba(99,102,241,0.35);
+    color: #a5b4fc;
+}
+
+/* ── Upgrade prompt ── */
+.drive-upgrade-prompt {
+    margin: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(99,102,241,0.1));
+    border: 1px solid rgba(139,92,246,0.25);
+    text-align: center;
+    flex-shrink: 0;
+}
+.drive-upgrade-prompt p {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin: 0 0 10px;
+}
+.drive-upgrade-btn {
+    padding: 7px 18px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    border: none;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.drive-upgrade-btn:hover { opacity: 0.85; transform: scale(1.03); }
+
+@media (max-width: 500px) {
+    .drive-panel { width: 100vw; }
+}

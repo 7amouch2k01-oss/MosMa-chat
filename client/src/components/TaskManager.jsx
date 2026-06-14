@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import './TaskManager.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 const COLUMNS = [

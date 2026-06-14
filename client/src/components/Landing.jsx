@@ -48,7 +48,7 @@ const Landing = () => {
             {/* --- Navbar --- */}
             <nav className="landing-nav">
                 <div className="nav-logo">
-                    <div className="logo-icon"><img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '32px', height: '32px', objectFit: 'contain'}} /></div>
+                    <div className="logo-icon"><img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '32px', height: '32px', objectFit: 'contain', borderRadius: '50%'}} /></div>
                     <span>MosMA Chat</span>
                 </div>
                 <div className="nav-links">
@@ -145,7 +145,7 @@ const Landing = () => {
             <footer className="landing-footer">
                 <div className="footer-content">
                     <div className="footer-brand">
-                        <div className="logo-icon"><img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '24px', height: '24px', objectFit: 'contain'}} /></div>
+                        <div className="logo-icon"><img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '24px', height: '24px', objectFit: 'contain', borderRadius: '50%'}} /></div>
                         <span>MosMA Chat</span>
                     </div>
                     <div className="footer-links">

@@ -24,7 +24,12 @@ const roomSchema = new mongoose.Schema({
     users: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false
+    }
 }, { timestamps: true });
 
 // Ensure unique name only for group rooms

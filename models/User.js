@@ -38,6 +38,16 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    isOwner: {
+        type: Boolean,
+        default: false,
+    },
+    subscriptionTier: {
+        type: String,
+        enum: ['free', 'pro', 'elite'],
+        default: 'free',
+        required: true
+    },
     profilePic: {
         type: String,
         default: '',
@@ -49,6 +59,43 @@ const userSchema = new mongoose.Schema({
     isBanned: {
         type: Boolean,
         default: false,
+    },
+    resetPasswordToken: {
+        type: String,
+        default: null,
+    },
+    resetPasswordExpires: {
+        type: Date,
+        default: null,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    verificationCode: {
+        type: String,
+        default: null,
+    },
+    verificationCodeExpires: {
+        type: Date,
+        default: null,
+    },
+    profileBgType: {
+        type: String,
+        enum: ['color', 'gradient'],
+        default: 'color',
+    },
+    profileCardBg: {
+        type: String,
+        default: 'var(--bg-glass-2)',
+    },
+    glowColor: {
+        type: String,
+        default: '',
+    },
+    profileMusicUrl: {
+        type: String,
+        default: '',
     },
 }, { timestamps: true });
 

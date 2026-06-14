@@ -246,6 +246,8 @@ const setUserOffline = (userId, socketId) => {
 
 const getOnlineUserIds = () => [...onlineUsers.keys()];
 
+global.whiteboardHistory = new Map();
+
 // ─── Socket.IO ────────────────────────────────────────────────────────────────
 // Require JWT for all socket connections:
 // client must connect with: io(API_URL, { auth: { token } })
@@ -291,7 +293,9 @@ io.on('connection', (socket) => {
             const room = await Room.findById(roomId);
             if (!room) return;
             
-            const isMember = room.users?.includes(userId) || room.participants?.includes(userId);
+            const isMember = 
+                room.users?.some(uid => uid.toString() === userId) || 
+                room.participants?.some(uid => uid.toString() === userId);
             if (!isMember) {
                 // If it's a group, we might want to let them join if it's public.
                 // For now, if they're not a member, reject.
@@ -306,15 +310,26 @@ io.on('connection', (socket) => {
             // Send last 50 messages
             const messages = await Message.find({ room: roomId })
                 .sort({ createdAt: 1 })
-                .limit(50);
+                .limit(50)
+                .populate('user', 'subscriptionTier avatarColor isAdmin isOwner');
             socket.emit('previous_messages', messages);
+
+            // Send pinned messages
+            const pinnedMessages = await Message.find({ room: roomId, pinned: true })
+                .populate('user', 'subscriptionTier avatarColor isAdmin isOwner');
+            socket.emit('pinned_messages', pinnedMessages);
 
             // Notify others
             socket.to(roomId).emit('user_joined', { username });
 
             // Updated user list
-            const updatedRoom = await Room.findById(roomId).populate('users', 'username email');
-            if (updatedRoom) io.to(roomId).emit('room_users_update', updatedRoom.users);
+            const updatedRoom = await Room.findById(roomId)
+                .populate('users', 'username email avatarColor status subscriptionTier')
+                .populate('participants', 'username email avatarColor status subscriptionTier');
+            if (updatedRoom) {
+                const members = updatedRoom.type === 'dm' ? updatedRoom.participants : updatedRoom.users;
+                io.to(roomId).emit('room_users_update', members);
+            }
 
         } catch (error) {
             console.error('Error in join_room:', error);
@@ -350,7 +365,9 @@ io.on('connection', (socket) => {
 
             const room = await Room.findById(roomId);
             if (!room) return;
-            const isMember = room.users?.includes(socket.data.userId) || room.participants?.includes(socket.data.userId);
+            const isMember = 
+                room.users?.some(uid => uid.toString() === socket.data.userId) || 
+                room.participants?.some(uid => uid.toString() === socket.data.userId);
             if (!isMember) {
                 if (typeof ack === 'function') ack({ status: 'error', message: 'Not authorized' });
                 return;
@@ -365,8 +382,9 @@ io.on('connection', (socket) => {
                 fileName: data?.fileName,
             });
             const savedMessage = await newMessage.save();
+            const populatedMessage = await Message.findById(savedMessage._id).populate('user', 'subscriptionTier avatarColor isAdmin isOwner');
 
-            io.to(roomId).emit('receive_message', savedMessage);
+            io.to(roomId).emit('receive_message', populatedMessage || savedMessage);
 
             // Acknowledge delivery to sender
             if (typeof ack === 'function') ack({ status: 'delivered', messageId: savedMessage._id });
@@ -382,7 +400,7 @@ io.on('connection', (socket) => {
         if (recipientSockets) {
             recipientSockets.forEach(sid => {
                 io.to(sid).emit('receive_friend_request', { request, requesterName });
-                io.to(sid).emit('friend_request_received', { requesterName });
+                io.to(sid).emit('friend_request_received', { requesterName, request });
             });
         }
     });
@@ -567,6 +585,30 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('pin_message', async ({ message, roomId }) => {
+        try {
+            if (!message?._id || !roomId) return;
+            const updated = await Message.findByIdAndUpdate(message._id, { pinned: true }, { new: true }).populate('user', 'subscriptionTier avatarColor isAdmin isOwner');
+            if (updated) {
+                io.to(roomId).emit('message_pinned', { message: updated });
+            }
+        } catch (error) {
+            console.error('Pin message error:', error);
+        }
+    });
+
+    socket.on('unpin_message', async ({ messageId, roomId }) => {
+        try {
+            if (!messageId || !roomId) return;
+            const updated = await Message.findByIdAndUpdate(messageId, { pinned: false }, { new: true });
+            if (updated) {
+                io.to(roomId).emit('message_unpinned', { messageId });
+            }
+        } catch (error) {
+            console.error('Unpin message error:', error);
+        }
+    });
+
     // ── Disconnect ────────────────────────────────────────────────────────────
     socket.on('disconnect', async () => {
         console.log(`Socket disconnected: ${socket.id}`);
@@ -590,6 +632,46 @@ io.on('connection', (socket) => {
                 console.log(`User offline: ${username} (${userId})`);
             }
         }
+    });
+
+    // ── Whiteboard ────────────────────────────────────────────────────────────
+    socket.on('whiteboard_join', ({ roomId }) => {
+        if (!roomId) return;
+        const wbRoom = `wb:${roomId}`;
+        socket.join(wbRoom);
+
+        // Send existing strokes to late-joining user
+        const history = global.whiteboardHistory.get(roomId) || [];
+        socket.emit('whiteboard_history', history);
+
+        // Broadcast updated user count
+        const count = io.sockets.adapter.rooms.get(wbRoom)?.size || 1;
+        io.to(wbRoom).emit('whiteboard_users', count);
+    });
+
+    socket.on('whiteboard_leave', ({ roomId }) => {
+        if (!roomId) return;
+        const wbRoom = `wb:${roomId}`;
+        socket.leave(wbRoom);
+        const count = io.sockets.adapter.rooms.get(wbRoom)?.size || 0;
+        io.to(wbRoom).emit('whiteboard_users', count);
+    });
+
+    socket.on('whiteboard_draw', ({ roomId, stroke }) => {
+        if (!roomId || !stroke) return;
+        // Store stroke in memory (cap at 500 per board)
+        if (!global.whiteboardHistory.has(roomId)) global.whiteboardHistory.set(roomId, []);
+        const hist = global.whiteboardHistory.get(roomId);
+        hist.push(stroke);
+        if (hist.length > 500) hist.splice(0, hist.length - 500);
+        // Broadcast to everyone else in the whiteboard room
+        socket.to(`wb:${roomId}`).emit('whiteboard_draw', stroke);
+    });
+
+    socket.on('whiteboard_clear', ({ roomId }) => {
+        if (!roomId) return;
+        global.whiteboardHistory.set(roomId, []);
+        socket.to(`wb:${roomId}`).emit('whiteboard_clear');
     });
 });
 

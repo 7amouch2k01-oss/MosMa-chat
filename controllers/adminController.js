@@ -26,7 +26,8 @@ const deleteUser = async (req, res) => {
                 action: 'DELETE_USER',
                 target: user.username,
                 details: `Deleted user with email: ${user.email}`,
-                ip: req.ip
+                ip: req.ip,
+                type: 'admin_action'
             });
 
             await User.deleteOne({ _id: user._id });
@@ -56,7 +57,8 @@ const updateUserRole = async (req, res) => {
                 action: 'UPDATE_ROLE',
                 target: user.username,
                 details: `Changed role from ${oldRole} to ${newRole}`,
-                ip: req.ip
+                ip: req.ip,
+                type: 'admin_action'
             });
 
             await user.save();
@@ -84,6 +86,15 @@ const deleteRoom = async (req, res) => {
     try {
         const room = await Room.findById(req.params.id);
         if (room) {
+            await Log.create({
+                admin: req.user._id,
+                action: 'DELETE_ROOM',
+                target: room.name,
+                details: `Deleted room: ${room.name}`,
+                ip: req.ip,
+                type: 'admin_action'
+            });
+
             await Room.deleteOne({ _id: room._id });
             res.json({ message: 'Room removed' });
         } else {
@@ -135,7 +146,8 @@ const toggleUserBan = async (req, res) => {
                 action: user.isBanned ? 'BAN_USER' : 'UNBAN_USER',
                 target: user.username,
                 details: `${user.isBanned ? 'Banned' : 'Unbanned'} user`,
-                ip: req.ip
+                ip: req.ip,
+                type: 'admin_action'
             });
 
             await user.save();
@@ -161,8 +173,21 @@ const getAllPosts = async (req, res) => {
 // @desc    Delete post
 const deletePost = async (req, res) => {
     try {
-        await Post.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Post removed' });
+        const post = await Post.findById(req.params.id).populate('user', 'username');
+        if (post) {
+            await Log.create({
+                admin: req.user._id,
+                action: 'DELETE_POST',
+                target: post.user ? post.user.username : 'Unknown User',
+                details: `Deleted post: "${post.content ? post.content.substring(0, 60) : ''}"`,
+                ip: req.ip,
+                type: 'admin_action'
+            });
+            await Post.deleteOne({ _id: post._id });
+            res.json({ message: 'Post removed' });
+        } else {
+            res.status(404).json({ message: 'Post not found' });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -183,6 +208,15 @@ const broadcastMessage = async (req, res) => {
             });
         }
         
+        await Log.create({
+            admin: req.user._id,
+            action: 'BROADCAST_MESSAGE',
+            target: 'All Users',
+            details: `Broadcasted: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
+            ip: req.ip,
+            type: 'admin_action'
+        });
+
         res.json({ message: 'Broadcast sent successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -192,7 +226,9 @@ const broadcastMessage = async (req, res) => {
 // @desc    Get all system security logs
 const getLogs = async (req, res) => {
     try {
-        const logs = await Log.find()
+        const { type } = req.query;
+        const query = type ? { type } : {};
+        const logs = await Log.find(query)
             .populate('admin', 'username email')
             .sort({ createdAt: -1 })
             .limit(100);

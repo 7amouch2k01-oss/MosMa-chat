@@ -17,8 +17,8 @@ const createOwner = async () => {
         if (user) {
             console.log('User already exists. Updating to owner/admin status...');
             user.isAdmin = true;
+            user.isOwner = true;
             user.username = ownerName;
-            user.password = ownerPassword;
             await user.save();
         } else {
             console.log('Creating new owner account...');
@@ -26,7 +26,9 @@ const createOwner = async () => {
                 username: ownerName,
                 email: ownerEmail,
                 password: ownerPassword,
-                isAdmin: true
+                isAdmin: true,
+                isOwner: true,
+                isVerified: true
             });
         }
         

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { User, MessageCircle, UserPlus, Users, Search } from 'lucide-react';
 import './FriendsList.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 const FriendsList = ({ userInfo, onStartDM, socket, onlineUserIds, searchQuery }) => {
@@ -37,7 +37,7 @@ const FriendsList = ({ userInfo, onStartDM, socket, onlineUserIds, searchQuery }
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Filter only accepted friends
-            const acceptedFriends = data.filter(f => f.status === 'accepted').map(f => {
+            const acceptedFriends = data.filter(f => f.status === 'accepted' && f.requester && f.recipient).map(f => {
                 return f.requester._id === userInfo._id ? f.recipient : f.requester;
             });
             setFriends(acceptedFriends);
@@ -76,7 +76,12 @@ const FriendsList = ({ userInfo, onStartDM, socket, onlineUserIds, searchQuery }
                                     {isOnline && <span className="online-indicator" />}
                                 </div>
                                 <div className="friend-info">
-                                    <span className="friend-name">{friend.username}</span>
+                                    <span className="friend-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {friend.username}
+                                        {friend.subscriptionTier === 'pro' && <span className="badge badge-pro" style={{ fontSize: '0.55rem', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8', display: 'inline-block' }}>PRO</span>}
+                                        {friend.subscriptionTier === 'elite' && <span className="badge badge-elite" style={{ fontSize: '0.55rem', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#eab308', display: 'inline-block' }}>ELITE</span>}
+                                        {friend.isOwner && <span className="badge badge-owner" style={{ fontSize: '0.55rem', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171', display: 'inline-block' }}>OWNER</span>}
+                                    </span>
                                     <span className="friend-status">{isOnline ? 'Online' : 'Offline'}</span>
                                 </div>
                                 <button className="dm-icon-btn">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle, Edit3, Trash2, Menu, RefreshCw } from 'lucide-react';
+import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle, Edit3, Trash2, Menu, RefreshCw, ArrowLeft, PenLine, HardDrive, Globe } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { useToast } from './Toast';
 import FriendsList from './FriendsList';
@@ -14,9 +14,12 @@ import NotificationPanel from './NotificationPanel';
 import CallPanel from './CallPanel';
 import AdminDashboard from './AdminDashboard';
 import TaskManager from './TaskManager';
+import BillingModal from './BillingModal';
+import Whiteboard from './Whiteboard';
+import DrivePanel from './DrivePanel';
 import './Chat.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 function readStoredUserInfo() {
@@ -114,6 +117,10 @@ const Chat = () => {
     const [showAdmin, setShowAdmin] = useState(false);
     const [showTasks, setShowTasks] = useState(false);
     const [mobileSidebar, setMobileSidebar] = useState(false);
+    const [showBilling, setShowBilling] = useState(false);
+    const [selectedBillingPlan, setSelectedBillingPlan] = useState('pro');
+    const [showWhiteboard, setShowWhiteboard] = useState(false);
+    const [showDrive, setShowDrive] = useState(false);
 
     // Call state
     const [activeCall, setActiveCall]     = useState(null); // { targetUser, type }
@@ -127,6 +134,9 @@ const Chat = () => {
     const [sidebarSearch, setSidebarSearch] = useState('');
     const [searchLoading, setSearchLoading] = useState(false);
     const [errorBoundary, setErrorBoundary] = useState(null);
+    // Pinned messages
+    const [pinnedMessages, setPinnedMessages] = useState([]); // array of message objects
+    const [showPinBanner, setShowPinBanner] = useState(true);
     const navigate = useNavigate();
 
     const messagesEndRef = useRef(null);
@@ -288,6 +298,9 @@ const Chat = () => {
         });
 
         socket.on('previous_messages', (msgs) => setMessages(msgs));
+        socket.on('pinned_messages', (pinned) => {
+            setPinnedMessages(pinned);
+        });
         socket.on('receive_message', (msg) => {
             setMessages(prev => [...prev, msg]);
             if (msg.username !== userInfo.username) {
@@ -318,10 +331,23 @@ const Chat = () => {
         // Delete/Edit
         socket.on('message_deleted', ({ messageId }) => {
             setMessages(prev => prev.filter(m => m._id !== messageId));
+            setPinnedMessages(prev => prev.filter(m => m._id !== messageId));
         });
 
         socket.on('message_edited', (updatedMsg) => {
             setMessages(prev => prev.map(m => m._id === updatedMsg._id ? updatedMsg : m));
+        });
+
+        // Pinned messages sync
+        socket.on('message_pinned', ({ message }) => {
+            setPinnedMessages(prev => {
+                if (prev.some(m => m._id === message._id)) return prev;
+                return [message, ...prev];
+            });
+            setShowPinBanner(true);
+        });
+        socket.on('message_unpinned', ({ messageId }) => {
+            setPinnedMessages(prev => prev.filter(m => m._id !== messageId));
         });
 
         return () => {
@@ -329,14 +355,18 @@ const Chat = () => {
                 roomId:   currentRoom._id,
             });
             socket.off('previous_messages');
+            socket.off('pinned_messages');
             socket.off('receive_message');
             socket.off('room_users_update');
             socket.off('user_joined');
             socket.off('user_left');
             socket.off('typing_start');
             socket.off('typing_stop');
+            socket.off('message_pinned');
+            socket.off('message_unpinned');
             setMessages([]);
             setTypingUsers([]);
+            setPinnedMessages([]);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentRoom, socket]);
@@ -385,6 +415,13 @@ const Chat = () => {
         
         // --- Task Command Check ---
         if (newMessage.startsWith('/task')) {
+            if (!userInfo.subscriptionTier || userInfo.subscriptionTier === 'free') {
+                addToast('Task management is a premium feature. Please upgrade to Pro or Elite to use `/task`.', 'error');
+                setSelectedBillingPlan('pro');
+                setShowBilling(true);
+                setNewMessage('');
+                return;
+            }
             const parts = newMessage.split(' ');
             if (parts.length >= 2) {
                 let category = 'others';
@@ -486,6 +523,24 @@ const Chat = () => {
         }
     };
 
+    const handlePinMessage = (msg) => {
+        const isAlreadyPinned = pinnedMessages.some(m => m._id === msg._id);
+        if (isAlreadyPinned) {
+            setPinnedMessages(prev => prev.filter(m => m._id !== msg._id));
+            if (socket && currentRoom) {
+                socket.emit('unpin_message', { messageId: msg._id, roomId: currentRoom._id });
+            }
+            addToast('Message unpinned', 'info');
+        } else {
+            setPinnedMessages(prev => [msg, ...prev]);
+            setShowPinBanner(true);
+            if (socket && currentRoom) {
+                socket.emit('pin_message', { message: msg, roomId: currentRoom._id });
+            }
+            addToast('📌 Message pinned!', 'success');
+        }
+    };
+
     const startEditing = (msg) => {
         setEditingMsgId(msg._id);
         setEditContent(msg.content);
@@ -518,6 +573,11 @@ const Chat = () => {
             setNewRoomDesc('');
             addToast(`Room "${newRoomName}" created!`, 'success');
         } catch (err) {
+            if (err.response?.status === 403 && err.response?.data?.limitReached) {
+                const requiredTier = err.response.data.tier === 'free' ? 'pro' : 'elite';
+                setSelectedBillingPlan(requiredTier);
+                setShowBilling(true);
+            }
             addToast(err.response?.data?.message || 'Failed to create room', 'error');
         }
     };
@@ -557,6 +617,12 @@ const Chat = () => {
     };
 
     const handleStartCall = (type) => {
+        if (userInfo.subscriptionTier !== 'elite') {
+            addToast('Voice and Video calling is exclusive to Elite tier members.', 'error');
+            setSelectedBillingPlan('elite');
+            setShowBilling(true);
+            return;
+        }
         if (!currentRoom || currentRoom.type !== 'dm') return;
         const otherUser = roomUsers.find(u => u._id !== userInfo._id);
         if (otherUser) {
@@ -629,7 +695,7 @@ const Chat = () => {
 
     try {
         return (
-            <div className={`chat-dashboard ${currentTheme}`}>
+            <div className={`chat-dashboard ${currentTheme} ${!currentRoom ? 'no-room' : ''}`}>
             {activeCall && (
                 <CallPanel 
                     socket={socket} 
@@ -687,6 +753,11 @@ const Chat = () => {
                         localStorage.setItem('chatSettings', JSON.stringify(s));
                     }}
                     onClose={() => setShowSettings(false)} 
+                    userInfo={userInfo}
+                    onOpenAdmin={() => {
+                        setShowAdmin(true);
+                        setShowSettings(false);
+                    }}
                 />
             )}
             {showNotifications && (
@@ -698,13 +769,29 @@ const Chat = () => {
                 />
             )}
             {showTasks && <TaskManager userInfo={userInfo} onClose={() => setShowTasks(false)} />}
+            {showWhiteboard && (
+                <Whiteboard
+                    roomId={currentRoom?._id}
+                    roomName={currentRoom?.name}
+                    socket={socket}
+                    userInfo={userInfo}
+                    onClose={() => setShowWhiteboard(false)}
+                />
+            )}
+            {showDrive && (
+                <DrivePanel
+                    userInfo={userInfo}
+                    onClose={() => setShowDrive(false)}
+                    onUpgrade={(tier) => { setSelectedBillingPlan(tier); setShowBilling(true); }}
+                />
+            )}
 
             {/* ── SIDEBAR ──────────────────────────────────────────────────── */}
             <div className={`sidebar ${mobileSidebar ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
                     <div className="sidebar-brand">
                         <div className="sidebar-logo">
-                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '28px', height: '28px', objectFit: 'contain'}} />
+                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '28px', height: '28px', objectFit: 'contain', borderRadius: '50%'}} />
                         </div>
                         <h2>MosMA Chat</h2>
                     </div>
@@ -727,7 +814,7 @@ const Chat = () => {
                             )}
                         </div>
                         <button className="icon-btn" onClick={() => navigate('/feed')} title="Social Feed">
-                            <Home size={18} />
+                            <Globe size={18} />
                         </button>
                         <button className="icon-btn logout-btn" onClick={handleLogout} title="Logout">
                             <LogOut size={18} />
@@ -742,7 +829,15 @@ const Chat = () => {
                         <button className="sidebar-action-pill" onClick={() => setShowUserSearch(true)}>
                             <Search size={14} /> Discover People
                         </button>
-                        <button className="sidebar-action-pill" onClick={() => navigate('/tasks')}>
+                        <button className="sidebar-action-pill" onClick={() => {
+                            if (!userInfo.subscriptionTier || userInfo.subscriptionTier === 'free') {
+                                addToast('Task Board is a premium feature. Please upgrade to Pro or Elite to access it.', 'error');
+                                setSelectedBillingPlan('pro');
+                                setShowBilling(true);
+                            } else {
+                                navigate('/tasks');
+                            }
+                        }}>
                             <CheckCircle size={14} /> Task Board
                         </button>
                         {userInfo?.isAdmin && (
@@ -823,11 +918,11 @@ const Chat = () => {
                             {rooms
                                 .filter(r => r.type === 'dm')
                                 .filter(r => {
-                                    const other = r.participants?.find(p => p._id !== userInfo?._id);
+                                    const other = r.participants?.find(p => p?._id !== userInfo?._id);
                                     return (other?.username || 'Private Chat').toLowerCase().includes(sidebarSearch.toLowerCase());
                                 })
                                 .map(room => {
-                                const other = room.participants?.find(p => p._id !== userInfo?._id);
+                                const other = room.participants?.find(p => p?._id !== userInfo?._id);
                                 const isOnline = other ? onlineUserIds.has(other._id) : false;
                                 return (
                                     <li 
@@ -854,6 +949,9 @@ const Chat = () => {
                 {currentRoom ? (
                     <>
                         <div className="chat-header">
+                            <div className="back-btn-mobile" onClick={() => setCurrentRoom(null)} title="Back to Rooms">
+                                <ArrowLeft size={20} />
+                            </div>
                             <div className="sidebar-toggle" onClick={() => setMobileSidebar(!mobileSidebar)}>
                                 <Menu size={24} />
                             </div>
@@ -896,6 +994,27 @@ const Chat = () => {
                                         <button className="icon-btn" onClick={() => handleStartCall('video')} title="Video Call"><Video size={18} /></button>
                                     </>
                                 )}
+                                <button
+                                    className="icon-btn"
+                                    onClick={() => {
+                                        if (!currentRoom) { addToast('Open a room first to use Whiteboard', 'error'); return; }
+                                        if (userInfo.subscriptionTier === 'free') {
+                                            addToast('Whiteboard is a Pro/Elite feature. Upgrade to unlock it!', 'error');
+                                            setSelectedBillingPlan('pro'); setShowBilling(true); return;
+                                        }
+                                        setShowWhiteboard(true);
+                                    }}
+                                    title="Collaborative Whiteboard"
+                                >
+                                    <PenLine size={18} />
+                                </button>
+                                <button
+                                    className="icon-btn"
+                                    onClick={() => setShowDrive(true)}
+                                    title="My Cloud Drive"
+                                >
+                                    <HardDrive size={18} />
+                                </button>
 
                                 {currentRoom.type !== 'dm' && (
                                     <button 
@@ -926,6 +1045,24 @@ const Chat = () => {
                             </div>
                         </div>
 
+                        {/* ── PINNED MESSAGE BANNER ─────────── */}
+                        {showPinBanner && pinnedMessages.length > 0 && (
+                            <div className="pinned-banner">
+                                <div className="pinned-banner-left">
+                                    <span className="pin-icon">📌</span>
+                                    <div className="pinned-content">
+                                        <span className="pinned-label">Pinned Message</span>
+                                        <span className="pinned-text">
+                                            {pinnedMessages[0].username}: {pinnedMessages[0].content?.substring(0, 60)}{pinnedMessages[0].content?.length > 60 ? '…' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button className="pinned-close" onClick={() => setShowPinBanner(false)} title="Dismiss">
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="messages-container">
                             {filteredMessages.map((msg, idx) => {
                                 const isOwn = msg.username === userInfo?.username;
@@ -936,7 +1073,14 @@ const Chat = () => {
                                         className={`message ${isOwn ? 'own-message' : 'other-message'}`}
                                     >
                                         <div className="message-content">
-                                            {!isOwn && <span className="sender">{msg.username}</span>}
+                                            {!isOwn && (
+                                                <span className="sender">
+                                                    {msg.username}
+                                                    {msg.user?.subscriptionTier === 'pro' && <span className="badge badge-pro">PRO</span>}
+                                                    {msg.user?.subscriptionTier === 'elite' && <span className="badge badge-elite">ELITE</span>}
+                                                    {msg.user?.isOwner && <span className="badge badge-owner">OWNER</span>}
+                                                </span>
+                                            )}
                                             
                                             {editingMsgId === msg._id ? (
                                                 <form className="edit-msg-form" onSubmit={handleSaveEdit}>
@@ -1005,6 +1149,13 @@ const Chat = () => {
                                                         {emoji}
                                                     </button>
                                                 ))}
+                                                <button
+                                                    className={`pin-msg-btn ${pinnedMessages.some(m => m._id === msg._id) ? 'pinned-active' : ''}`}
+                                                    title={pinnedMessages.some(m => m._id === msg._id) ? 'Unpin message' : 'Pin message'}
+                                                    onClick={() => handlePinMessage(msg)}
+                                                >
+                                                    📌
+                                                </button>
                                                 {(isOwn || userInfo.isAdmin) && (
                                                     <div className="msg-admin-actions">
                                                         <button title="Edit" onClick={() => startEditing(msg)}><Edit3 size={12} /></button>
@@ -1069,7 +1220,7 @@ const Chat = () => {
                 ) : (
                     <div className="no-room-selected">
                         <div className="welcome-icon">
-                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '80px', height: '80px', objectFit: 'contain'}} />
+                            <img src="/mosma_logo.png" alt="MosMA Logo" style={{width: '80px', height: '80px', objectFit: 'contain', borderRadius: '50%'}} />
                         </div>
                         <h2>Welcome to MosMA Chat</h2>
                         <p>Select a room or friend to start chatting!</p>
@@ -1079,6 +1230,16 @@ const Chat = () => {
                     </div>
                 )}
             </div>
+            <BillingModal 
+                isOpen={showBilling} 
+                onClose={() => setShowBilling(false)} 
+                onSuccess={(updatedUser) => {
+                    setUserInfo(updatedUser);
+                    // Emit event to update other components that read localStorage
+                    window.dispatchEvent(new Event('storage'));
+                }}
+                initialTier={selectedBillingPlan}
+            />
         </div>
     );
     } catch (err) {

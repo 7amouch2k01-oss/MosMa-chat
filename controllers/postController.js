@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const Friendship = require('../models/Friendship');
+const Log = require('../models/Log');
 
 // Get feed posts
 const getPosts = async (req, res) => {
@@ -56,6 +57,15 @@ const updatePost = async (req, res) => {
         const post = await Post.findById(req.params.id);
         if (!post) return res.status(404).json({ message: 'Post not found' });
         if (post.user.toString() !== req.user._id.toString()) {
+            const browserInfo = req.headers['user-agent'] || 'Unknown Browser';
+            await Log.create({
+                action: 'UNAUTHORIZED_POST_MODIFICATION',
+                target: `Post ID: ${post._id}`,
+                details: `User "${req.user.username}" (Email: ${req.user.email}, ID: ${req.user._id}) attempted unauthorized modification of Post owned by User ID: ${post.user}. IP: ${req.ip}. Browser: ${browserInfo}`,
+                ip: req.ip,
+                severity: 'high',
+                type: 'security'
+            });
             return res.status(401).json({ message: 'Not authorized' });
         }
 
@@ -79,6 +89,15 @@ const deletePost = async (req, res) => {
         
         // Admin or Owner can delete
         if (post.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+            const browserInfo = req.headers['user-agent'] || 'Unknown Browser';
+            await Log.create({
+                action: 'UNAUTHORIZED_POST_DELETION',
+                target: `Post ID: ${post._id}`,
+                details: `User "${req.user.username}" (Email: ${req.user.email}, ID: ${req.user._id}) attempted unauthorized deletion of Post owned by User ID: ${post.user}. IP: ${req.ip}. Browser: ${browserInfo}`,
+                ip: req.ip,
+                severity: 'high',
+                type: 'security'
+            });
             return res.status(401).json({ message: 'Not authorized' });
         }
 
@@ -139,6 +158,15 @@ const deleteComment = async (req, res) => {
         if (!comment) return res.status(404).json({ message: 'Comment not found' });
 
         if (comment.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+            const browserInfo = req.headers['user-agent'] || 'Unknown Browser';
+            await Log.create({
+                action: 'UNAUTHORIZED_COMMENT_DELETION',
+                target: `Comment ID: ${comment._id} on Post: ${post._id}`,
+                details: `User "${req.user.username}" (Email: ${req.user.email}, ID: ${req.user._id}) attempted unauthorized deletion of Comment owned by User ID: ${comment.user}. IP: ${req.ip}. Browser: ${browserInfo}`,
+                ip: req.ip,
+                severity: 'high',
+                type: 'security'
+            });
             return res.status(401).json({ message: 'Not authorized' });
         }
 

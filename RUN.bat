@@ -28,13 +28,13 @@ if errorlevel 1 (
 REM Install dependencies on first run
 if not exist "node_modules" (
     echo Installing dependencies... This may take 2-3 minutes.
-    call npm install
+    call pnpm install
 )
 
 if not exist "client\node_modules" (
     echo Installing client dependencies... This may take 2-3 minutes.
     cd client
-    call npm install
+    call pnpm install
     cd ..
 )
 
@@ -50,6 +50,6 @@ REM Open browser
 start http://localhost:3000
 
 REM Start dev server
-call npm run dev
+call pnpm run dev
 
 pause

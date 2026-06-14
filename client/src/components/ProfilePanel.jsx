@@ -3,7 +3,7 @@ import axios from 'axios';
 import { X, Mail, Calendar, MessageSquare, Users } from 'lucide-react';
 import './ProfilePanel.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 const AVATAR_COLORS = [
@@ -68,7 +68,7 @@ const ProfilePanel = ({ userInfo, targetUser, onClose }) => {
 
     return (
         <div className="profile-overlay" onClick={onClose}>
-            <div className="profile-panel" onClick={e => e.stopPropagation()}>
+            <div className="profile-panel" onClick={e => e.stopPropagation()} style={displayUser.profileCardBg ? { background: displayUser.profileCardBg } : {}}>
                 <div className="profile-header">
                     <h3>{isOwnProfile ? 'My Profile' : `${displayUser.username}'s Profile`}</h3>
                     <button className="profile-close" onClick={onClose}><X size={20} /></button>
@@ -76,16 +76,30 @@ const ProfilePanel = ({ userInfo, targetUser, onClose }) => {
 
                 <div className="profile-body">
                     <div className="profile-avatar-section">
-                        <div className="avatar-huge" style={{ background: displayUser.avatarColor || '#4F46E5' }}>
+                        <div 
+                            className="avatar-huge" 
+                            style={{ 
+                                background: displayUser.avatarColor || '#4F46E5',
+                                boxShadow: displayUser.glowColor ? `0 0 30px ${displayUser.glowColor}, 0 0 60px ${displayUser.glowColor}55` : undefined
+                            }}
+                        >
                             {displayUser.profilePic ? (
                                 <img src={`${BACKEND_URL}${displayUser.profilePic}`} alt="avatar" className="avatar-img-full" />
                             ) : (
                                 displayUser.username?.charAt(0).toUpperCase() || '?'
                             )}
                         </div>
-                        <h2 className="profile-username">
+                        {/* Profile music player (Elite) */}
+                        {displayUser.profileMusicUrl && (
+                            <audio autoPlay loop style={{ display: 'none' }} src={displayUser.profileMusicUrl} />
+                        )}
+                        <h2 className="profile-username" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             {displayUser?.username}
                             <span className="profile-tag">#{displayUser?.tag || '0000'}</span>
+                            {displayUser?.subscriptionTier === 'pro' && <span className="badge badge-pro" style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: '#818cf8' }}>PRO</span>}
+                            {displayUser?.subscriptionTier === 'elite' && <span className="badge badge-elite" style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#eab308', boxShadow: '0 0 8px rgba(234, 179, 8, 0.15)' }}>ELITE</span>}
+                            {displayUser?.isOwner && <span className="badge badge-owner" style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}>OWNER</span>}
+                            {displayUser?.isAdmin && !displayUser?.isOwner && <span className="badge badge-admin" style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', color: '#38bdf8' }}>ADMIN</span>}
                         </h2>
                         <p className="profile-email">{displayUser?.email}</p>
                     </div>

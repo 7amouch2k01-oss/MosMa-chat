@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Users, X, UserPlus, MessageCircle, User as UserIcon } from 'lucide-react';
 import './MembersPanel.css';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+const BACKEND_URL = import.meta.env.PROD ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:5000`;
 const API_URL = `${BACKEND_URL}/api`;
 
 const MembersPanel = ({ room, userInfo, onClose, onStartDM, onToast, socket, onViewProfile }) => {
@@ -20,6 +20,7 @@ const MembersPanel = ({ room, userInfo, onClose, onStartDM, onToast, socket, onV
     }, [room]);
 
     const isFriend = (id) => friends.some(f =>
+        f.requester?._id && f.recipient?._id &&
         (f.requester._id === id || f.recipient._id === id) && f.status === 'accepted'
     );
 
@@ -44,6 +45,7 @@ const MembersPanel = ({ room, userInfo, onClose, onStartDM, onToast, socket, onV
     };
 
     const friendsNotInRoom = friends.filter(f => {
+        if (!f.requester?._id || !f.recipient?._id) return false; // skip broken/unpopulated
         const friendId = f.requester._id === userInfo?._id ? f.recipient._id : f.requester._id;
         return !members.some(m => m._id === friendId);
     });

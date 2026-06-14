@@ -24,6 +24,12 @@ const logSchema = new mongoose.Schema({
         type: String,
         enum: ['low', 'medium', 'high', 'critical'],
         default: 'low'
+    },
+    type: {
+        type: String,
+        enum: ['security', 'admin_action'],
+        default: 'security',
+        required: true
     }
 }, { timestamps: true });
 
