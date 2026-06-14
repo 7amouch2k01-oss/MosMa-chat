@@ -60,7 +60,7 @@ const getFriends = async (req, res) => {
     try {
         const friendships = await Friendship.find({
             $or: [{ requester: req.user._id }, { recipient: req.user._id }]
-        }).populate('requester recipient', 'username email avatarColor subscriptionTier');
+        }).populate('requester recipient', 'username email avatarColor subscriptionTier profilePic status bio');
         
         res.json(friendships);
     } catch (error) {

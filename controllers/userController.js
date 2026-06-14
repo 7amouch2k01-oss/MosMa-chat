@@ -67,7 +67,7 @@ const updateProfile = async (req, res) => {
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const { username, email, status, bio, profilePic, avatarColor, profileBgType, profileCardBg, glowColor, profileMusicUrl } = req.body;
+        const { username, email, status, bio, profilePic, avatarColor, profileBgType, profileCardBg, glowColor, profileMusicUrl, coverPic } = req.body;
         
         let emailChanged = false;
         let code = null;
@@ -105,6 +105,7 @@ const updateProfile = async (req, res) => {
         if (profileCardBg !== undefined) user.profileCardBg = profileCardBg;
         if (glowColor !== undefined) user.glowColor = glowColor;
         if (profileMusicUrl !== undefined) user.profileMusicUrl = profileMusicUrl;
+        if (coverPic !== undefined) user.coverPic = coverPic;
 
         const updatedUser = await user.save();
 
@@ -132,6 +133,7 @@ const updateProfile = async (req, res) => {
             profileCardBg: updatedUser.profileCardBg,
             glowColor: updatedUser.glowColor,
             profileMusicUrl: updatedUser.profileMusicUrl,
+            coverPic: updatedUser.coverPic,
             devVerificationCode: code // Dev tool helper
         });
     } catch (error) {

@@ -97,6 +97,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    coverPic: {
+        type: String,
+        default: '',
+    },
 }, { timestamps: true });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {

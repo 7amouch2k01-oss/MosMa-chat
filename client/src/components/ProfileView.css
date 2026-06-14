@@ -211,8 +211,197 @@
 /* ── Layout ────────────────────────────────────────────────── */
 .profile-view-container {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 24px;
+  margin: 1rem auto;
+  padding: 0 12px;
+}
+
+/* ── Cover Camera Button ── */
+.pv-cover-camera {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+.pv-cover-camera:hover {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transform: scale(1.08);
+}
+.pv-cover-camera input {
+  display: none;
+}
+
+/* ── Delete Post Button ── */
+.delete-post-btn {
+  opacity: 0;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+.post-card:hover .delete-post-btn {
+  opacity: 0.6;
+}
+.delete-post-btn:hover {
+  opacity: 1 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ── Friends Tab Search ── */
+.pv-friends-search-container {
+  display: flex;
+  align-items: center;
+}
+.pv-friends-search {
+  background: var(--bg-glass-2);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px 14px;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  width: 200px;
+}
+.pv-friends-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+  width: 240px;
+}
+
+/* ── Friends Grid ── */
+.pv-friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 20px;
+}
+
+.pv-friend-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.pv-friend-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.pv-friend-card-avatar-wrap {
+  position: relative;
+}
+
+.pv-friend-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+.pv-friend-card-info h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pv-friend-status {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 10px;
+}
+
+.pv-friend-card-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.pv-friend-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.pv-chat-btn {
+  flex: 1;
+  background: var(--accent);
+  color: #fff;
+}
+.pv-chat-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.pv-unfriend-btn {
+  background: var(--bg-glass-2);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  padding: 8px 10px;
+}
+.pv-unfriend-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+.pv-unfriend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .pv-friends-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .pv-friends-search {
+    width: 100%;
+  }
+  .pv-friends-search:focus {
+    width: 100%;
+  }
 }
 
 .pv-body {

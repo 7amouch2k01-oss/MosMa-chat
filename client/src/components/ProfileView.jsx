@@ -6,7 +6,8 @@ import {
     Heart, MessageCircle, MoreHorizontal, Home,
     Shield, Mail, Edit2, Camera, X, Check, Loader2,
     AlertCircle, RefreshCw, Globe, Award, Zap,
-    Image as ImageIcon, FileText, UserCheck, Star
+    Image as ImageIcon, FileText, UserCheck, Star,
+    Trash2, SlidersHorizontal, Sparkles
 } from 'lucide-react';
 import { useToast } from './Toast';
 import BillingModal from './BillingModal';
@@ -49,8 +50,12 @@ const ProfileView = () => {
     const [isEditing, setIsEditing]   = useState(false);
     const [editData, setEditData]     = useState({});
     const [uploading, setUploading]   = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [showBilling, setShowBilling] = useState(false);
     const [activeTab, setActiveTab]   = useState('posts'); // posts | about | friends
+    const [friendships, setFriendships] = useState([]);
+    const [friendSearch, setFriendSearch] = useState('');
+    const [unfriendingId, setUnfriendingId] = useState(null);
 
     // Email verification
     const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -83,7 +88,11 @@ const ProfileView = () => {
     }, [navigate]);
 
     useEffect(() => {
-        if (userInfo) { fetchStats(); fetchUserPosts(); }
+        if (userInfo) {
+            fetchStats();
+            fetchUserPosts();
+            fetchFriendships();
+        }
     }, [userInfo?._id]);
 
     /* ── Data fetchers ──────────────────────────── */
@@ -105,6 +114,15 @@ const ProfileView = () => {
         } catch {}
     };
 
+    const fetchFriendships = async () => {
+        try {
+            const { data } = await axios.get(`${API_URL}/friends`, {
+                headers: { Authorization: `Bearer ${userInfo.token}` }
+            });
+            setFriendships(data);
+        } catch {}
+    };
+
     /* ── Edit profile ───────────────────────────── */
     const handleEditProfile = () => {
         setEditData({
@@ -117,7 +135,8 @@ const ProfileView = () => {
             profileBgType:  userInfo.profileBgType || 'color',
             profileCardBg:  userInfo.profileCardBg || '',
             glowColor:      userInfo.glowColor || '',
-            profileMusicUrl: userInfo.profileMusicUrl || ''
+            profileMusicUrl: userInfo.profileMusicUrl || '',
+            coverPic:       userInfo.coverPic || ''
         });
         setIsEditing(true);
     };
@@ -136,6 +155,64 @@ const ProfileView = () => {
             addToast('Photo uploaded!', 'success');
         } catch { addToast('Upload failed', 'error'); }
         finally   { setUploading(false); }
+    };
+
+    const handleCoverPicUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        setUploadingCover(true);
+        try {
+            const { data } = await axios.post(`${API_URL}/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${userInfo.token}` }
+            });
+            
+            // Save immediately to user profile
+            const { data: updatedData } = await axios.put(`${API_URL}/users/profile`, 
+                { coverPic: data.url }, 
+                { headers: { Authorization: `Bearer ${userInfo.token}` } }
+            );
+            
+            const updated = { ...userInfo, ...updatedData };
+            localStorage.setItem('userInfo', JSON.stringify(updated));
+            setUserInfo(updated);
+            addToast('Cover banner updated! ✨', 'success');
+        } catch { 
+            addToast('Cover upload failed', 'error'); 
+        } finally { 
+            setUploadingCover(false); 
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        if (!window.confirm('Are you sure you want to delete this post?')) return;
+        try {
+            await axios.delete(`${API_URL}/posts/${postId}`, {
+                headers: { Authorization: `Bearer ${userInfo.token}` }
+            });
+            setPosts(prev => prev.filter(p => p._id !== postId));
+            addToast('Post deleted successfully', 'success');
+        } catch {
+            addToast('Failed to delete post', 'error');
+        }
+    };
+
+    const handleUnfriend = async (friendshipId, otherUsername) => {
+        if (!window.confirm(`Are you sure you want to unfriend ${otherUsername}?`)) return;
+        setUnfriendingId(friendshipId);
+        try {
+            await axios.delete(`${API_URL}/friends/${friendshipId}`, {
+                headers: { Authorization: `Bearer ${userInfo.token}` }
+            });
+            setFriendships(prev => prev.filter(f => f._id !== friendshipId));
+            addToast(`Removed ${otherUsername} from friends`, 'success');
+            fetchStats();
+        } catch {
+            addToast('Failed to unfriend', 'error');
+        } finally {
+            setUnfriendingId(null);
+        }
     };
 
     const saveProfile = async () => {
@@ -235,11 +312,21 @@ const ProfileView = () => {
             <div className="profile-view-container">
                 {/* ── Cover ─────────────────────────── */}
                 <div className="profile-cover">
-                    <div className="profile-cover-bg" />
-                    <div className="profile-cover-orbs">
-                        <span /><span /><span />
-                    </div>
+                    <div 
+                        className="profile-cover-bg" 
+                        style={userInfo.coverPic ? { backgroundImage: `url(${getFullImageUrl(userInfo.coverPic)})`, backgroundSize: 'cover', backgroundPosition: 'center', animation: 'none' } : undefined} 
+                    />
+                    {!userInfo.coverPic && (
+                        <div className="profile-cover-orbs">
+                            <span /><span /><span />
+                        </div>
+                    )}
                     <div className="profile-cover-overlay" />
+
+                    <label className="pv-cover-camera" title="Change Cover Banner">
+                        <input type="file" hidden onChange={handleCoverPicUpload} accept="image/*" />
+                        {uploadingCover ? <Loader2 size={15} className="spin" style={{ animation: 'rotate 0.9s linear infinite' }} /> : <Camera size={15} />}
+                    </label>
 
                     <div className="profile-hero">
                         <div className="pv-avatar-wrap">
@@ -327,6 +414,7 @@ const ProfileView = () => {
                         {[
                             { id: 'posts',   icon: <ImageIcon size={15} />,   label: 'Posts' },
                             { id: 'about',   icon: <FileText size={15} />,    label: 'About' },
+                            { id: 'friends', icon: <Users size={15} />,       label: 'Friends' },
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -441,7 +529,9 @@ const ProfileView = () => {
                                                             <span>{new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                                                         </div>
                                                     </div>
-                                                    <button className="icon-btn"><MoreHorizontal size={18} /></button>
+                                                    <button className="icon-btn delete-post-btn" onClick={() => handleDeletePost(post._id)} title="Delete Post">
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
                                                 <div className="post-body">
                                                     {post.content && <p className="post-text">{post.content}</p>}
@@ -501,6 +591,103 @@ const ProfileView = () => {
                                         </div>
                                     </div>
                                 )}
+                            </>
+                        )}
+
+                        {/* ── FRIENDS TAB ── */}
+                        {activeTab === 'friends' && (
+                            <>
+                                <div className="pv-section-header">
+                                    <h3>My Friends</h3>
+                                    <div className="pv-friends-search-container">
+                                        <input
+                                            type="text"
+                                            placeholder="Search friends..."
+                                            value={friendSearch}
+                                            onChange={e => setFriendSearch(e.target.value)}
+                                            className="pv-friends-search"
+                                        />
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const acceptedFriends = friendships.filter(f => f.status === 'accepted').map(f => {
+                                        const isRequesterMe = f.requester && f.requester._id === userInfo._id;
+                                        return isRequesterMe ? { friendUser: f.recipient, friendshipId: f._id } : { friendUser: f.requester, friendshipId: f._id };
+                                    }).filter(item => item.friendUser !== null && item.friendUser !== undefined);
+
+                                    const filteredFriends = acceptedFriends.filter(item => 
+                                        item.friendUser?.username?.toLowerCase().includes(friendSearch.toLowerCase())
+                                    );
+
+                                    if (filteredFriends.length === 0) {
+                                        return (
+                                            <div className="empty-posts glass" style={{ padding: '60px 20px' }}>
+                                                <Users size={40} style={{ opacity: 0.3 }} />
+                                                <h4>No friends found</h4>
+                                                <p>{friendSearch ? `No friends match "${friendSearch}"` : "You haven't added any friends yet."}</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="pv-friends-grid">
+                                            {filteredFriends.map(({ friendUser, friendshipId }) => {
+                                                const tierInfo = TIER_INFO[friendUser.subscriptionTier] || TIER_INFO.free;
+                                                return (
+                                                    <div key={friendshipId} className="pv-friend-card glass">
+                                                        <div className="pv-friend-card-avatar-wrap">
+                                                            <div 
+                                                                className="avatar-md" 
+                                                                style={{ 
+                                                                    background: friendUser.avatarColor || 'var(--accent)', 
+                                                                    boxShadow: friendUser.glowColor ? `0 0 16px ${friendUser.glowColor}` : undefined,
+                                                                    border: friendUser.glowColor ? `2px solid ${friendUser.glowColor}` : undefined
+                                                                }}
+                                                            >
+                                                                {friendUser.profilePic ? (
+                                                                    <img src={getFullImageUrl(friendUser.profilePic)} alt="avatar" />
+                                                                ) : (
+                                                                    friendUser.username?.charAt(0).toUpperCase() || '?'
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="pv-friend-card-info">
+                                                            <h4>
+                                                                {friendUser.username}
+                                                                {friendUser.subscriptionTier && friendUser.subscriptionTier !== 'free' && (
+                                                                    <span className={`badge-${friendUser.subscriptionTier}`} style={{ marginLeft: 6, fontSize: '0.6rem', padding: '1px 5px', borderRadius: '4px', background: friendUser.subscriptionTier === 'elite' ? 'rgba(234,179,8,0.18)' : 'rgba(99,102,241,0.18)', color: friendUser.subscriptionTier === 'elite' ? '#fbbf24' : '#818cf8', border: `1px solid ${friendUser.subscriptionTier === 'elite' ? 'rgba(234,179,8,0.3)' : 'rgba(99,102,241,0.3)'}` }}>
+                                                                        {tierInfo.label.toUpperCase()}
+                                                                    </span>
+                                                                )}
+                                                            </h4>
+                                                            <p className="pv-friend-status" title={friendUser.status}>
+                                                                {friendUser.status || "Hey there! I am using MosMA Chat."}
+                                                            </p>
+                                                        </div>
+                                                        <div className="pv-friend-card-actions">
+                                                            <button 
+                                                                className="pv-friend-action-btn pv-chat-btn" 
+                                                                onClick={() => navigate('/chat', { state: { dmUser: friendUser } })}
+                                                                title="Send Message"
+                                                            >
+                                                                <MessageSquare size={14} /> Chat
+                                                            </button>
+                                                            <button 
+                                                                className="pv-friend-action-btn pv-unfriend-btn" 
+                                                                onClick={() => handleUnfriend(friendshipId, friendUser.username)}
+                                                                disabled={unfriendingId === friendshipId}
+                                                                title="Unfriend"
+                                                            >
+                                                                {unfriendingId === friendshipId ? <Loader2 size={12} className="spin" style={{ animation: 'rotate 0.9s linear infinite' }} /> : <Trash2 size={12} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
                             </>
                         )}
                     </main>

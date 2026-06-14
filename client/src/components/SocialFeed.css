@@ -915,3 +915,37 @@
 }
 .hashtag-filter-pill:hover { background: var(--bg-glass-3); color: var(--accent); border-color: var(--accent); }
 .hashtag-filter-pill.active { background: rgba(99,102,241,0.18); color: var(--accent); border-color: var(--accent); }
+
+/* Premium Settings Button */
+.icon-btn-settings-premium {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.12));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.icon-btn-settings-premium:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.32), rgba(168, 85, 247, 0.22));
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+}
+.icon-btn-settings-premium svg {
+  color: #a5b4fc;
+  transition: transform 0.3s ease;
+}
+.icon-btn-settings-premium:hover svg {
+  transform: rotate(45deg) scale(1.05);
+  color: #fff;
+}

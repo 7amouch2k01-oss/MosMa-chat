@@ -1339,3 +1339,31 @@
     background: rgba(234,179,8,0.2);
     box-shadow: 0 0 8px rgba(234,179,8,0.2);
 }
+
+/* Premium Settings Button - Icon only (Chat sidebar) */
+.icon-btn-settings-premium-icon {
+  position: relative;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.icon-btn-settings-premium-icon:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
+}
+.icon-btn-settings-premium-icon svg {
+  transition: transform 0.3s ease;
+}
+.icon-btn-settings-premium-icon:hover svg {
+  transform: rotate(45deg) scale(1.05);
+}

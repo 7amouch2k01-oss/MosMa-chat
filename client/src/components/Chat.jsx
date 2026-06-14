@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle, Edit3, Trash2, Menu, RefreshCw, ArrowLeft, PenLine, HardDrive, Globe } from 'lucide-react';
+import { LogOut, Plus, Users, Send, Search, X, Hash, User, UserSearch as UserSearchIcon, Shield, Smile, MoreVertical, MessageSquare, Bell, Settings, Phone, Video, Paperclip, FileText, Image as ImageIcon, Home, CheckCircle, Edit3, Trash2, Menu, RefreshCw, ArrowLeft, PenLine, HardDrive, Globe, SlidersHorizontal } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { useToast } from './Toast';
 import FriendsList from './FriendsList';
@@ -138,6 +138,7 @@ const Chat = () => {
     const [pinnedMessages, setPinnedMessages] = useState([]); // array of message objects
     const [showPinBanner, setShowPinBanner] = useState(true);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const messagesEndRef = useRef(null);
     const { toasts, addToast, removeToast } = useToast();
@@ -606,6 +607,15 @@ const Chat = () => {
         }
     };
 
+    // Auto-start DM if passed in route navigation state
+    useEffect(() => {
+        if (location.state?.dmUser && userInfo) {
+            handleStartDM(location.state.dmUser);
+            // Clean state so it doesn't run again on refreshes
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, userInfo]);
+
     const handleViewProfile = (user) => {
         setProfileUser(user);
         setShowProfile(true);
@@ -803,8 +813,8 @@ const Chat = () => {
                             <Bell size={18} />
                             {notifications.length > 0 && <span className="notif-badge">{notifications.length}</span>}
                         </button>
-                        <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
-                            <Settings size={18} />
+                        <button className="icon-btn-settings-premium-icon" onClick={() => setShowSettings(true)} title="Settings">
+                            <SlidersHorizontal size={16} />
                         </button>
                         <div className="avatar-xs" style={{ background: userInfo.avatarColor || 'var(--accent)' }}>
                             {userInfo.profilePic ? (
